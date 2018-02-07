@@ -9,9 +9,16 @@
 import UIKit
 import Foundation
 import AVFoundation
+import RealmSwift
 
 let loginID = UserDefaults.standard.string(forKey: "myID")!
 let webUrl:String = "https://app.eshopsummit.cz";
+
+class Contact: Object {
+    @objc dynamic var myID = loginID
+    @objc dynamic var pairID = "0"
+    @objc dynamic var toSync = 1
+}
 
 class ViewController2: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
     var captureSession: AVCaptureSession!
@@ -44,6 +51,8 @@ class ViewController2: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
     override func viewDidLoad() {
         print("startujem")
         super.viewDidLoad()
+        
+        print(loginID)
         
         if (loadStatus) {
             switchBtn.setImage(UIImage(named: "Switch1.png"), for: .normal)
@@ -93,8 +102,6 @@ class ViewController2: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
         captureSession.startRunning()
         
         
-        
-        
         self.timer = Timer.scheduledTimer(
             timeInterval: 5.0, //in seconds
             target: self, //where you'll find the selector (next argument)
@@ -114,6 +121,88 @@ class ViewController2: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
     
     @objc func syncContacts() {
         print("Syncing contacts...")
+        do {
+            let realm = try Realm()
+            let contacts = realm.objects(Contact.self).filter("toSync == 1")
+            
+            for contact in contacts {
+                print(contact.pairID)
+                print(contact.myID)
+                
+                makePairRequest(myID: contact.myID, pairID: contact.pairID)
+            }
+            
+        } catch let error as NSError {
+            print(error)
+            DispatchQueue.main.async {
+                let alert = UIAlertController(title: "Message", message: "Komunikace s databázi se nezdařila. Odhlašte se a opakujte akci později.", preferredStyle: UIAlertControllerStyle.alert)
+                alert.addAction(UIAlertAction(title: "Ok", style: UIAlertActionStyle.default, handler: nil))
+                self.present(alert, animated: true, completion: nil)
+            }
+        }
+    }
+    
+    func makePairRequest(myID:String, pairID:String) {
+        //create the url with NSURL
+        let url = URL(string: webUrl+"/eshop/index.php?myID="+myID+"&newID="+pairID)!
+        
+        print(myID)
+        
+        //create the session object
+        let session = URLSession.shared
+        
+        //now create the URLRequest object using the url object
+        let request = URLRequest(url: url)
+        
+        //create dataTask using the session object to send data to the server
+        let task = session.dataTask(with: request as URLRequest, completionHandler: { data, response, error in
+            
+            guard error == nil else {
+                return
+            }
+            
+            guard let data = data else {
+                return
+            }
+            
+            print("tvorim request")
+            
+            //TODO: change status of pairID in Realm manager
+            var dataString = String(data: data, encoding: String.Encoding.utf8) as String!
+            dataString = dataString?.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            print(dataString ?? "")
+            
+            if  dataString == "1" {
+                print("podarilo se synchronizovat " + myID + " a " + pairID)
+                DispatchQueue(label: "background").async {
+                    autoreleasepool {
+                        do {
+                            let realm = try Realm()
+                            let contacts = realm.objects(Contact.self).filter("pairID == '" + pairID + "' AND myID == '" + myID + "'")
+                            
+                            for contact in contacts {
+                                try realm.write {
+                                    contact.toSync = 0;
+                                }
+                            }
+                            
+                            print("zmeneno i v DB")
+                        } catch let error as NSError {
+                            print(error)
+                            DispatchQueue.main.async {
+                                let alert = UIAlertController(title: "Message", message: "Komunikace s databázi se nezdařila. Odhlašte se a opakujte akci později.", preferredStyle: UIAlertControllerStyle.alert)
+                                alert.addAction(UIAlertAction(title: "Ok", style: UIAlertActionStyle.default, handler: nil))
+                                self.present(alert, animated: true, completion: nil)
+                            }
+                        }
+                    }
+                }
+            }
+            
+        })
+        
+        task.resume()
     }
     
     func failed() {
@@ -156,6 +245,23 @@ class ViewController2: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
         
         if (result.count == 3) {
             
+            do {
+                let realm = try Realm()
+                let contact = Contact()
+                contact.pairID = result[0]
+                
+                try realm.write {
+                    realm.add(contact)
+                }
+                
+            } catch let error as NSError {
+                print(error)
+                DispatchQueue.main.async {
+                    let alert = UIAlertController(title: "Message", message: "Komunikace s databázi se nezdařila. Odhlašte se a opakujte akci později.", preferredStyle: UIAlertControllerStyle.alert)
+                    alert.addAction(UIAlertAction(title: "Ok", style: UIAlertActionStyle.default, handler: nil))
+                    self.present(alert, animated: true, completion: nil)
+                }
+            }
             
             nameLabel.text = result[1]
             companyLabel.text = result[2]

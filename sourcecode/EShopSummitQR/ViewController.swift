@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import RealmSwift
 
 class ViewController: UIViewController {
 
@@ -15,6 +16,7 @@ class ViewController: UIViewController {
     @IBOutlet weak var loginBtn: UIButton!
     
     let webUrl:String = "https://app.eshopsummit.cz";
+    let deleteAllRealm = 0
     
     func showMSG( text:String){
         DispatchQueue.main.async {
@@ -27,6 +29,13 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
+        
+        if (deleteAllRealm == 1) {
+            let realm = try! Realm()
+            try! realm.write {
+                realm.deleteAll()
+            }
+        }
     }
 
     override func didReceiveMemoryWarning() {
@@ -82,6 +91,8 @@ class ViewController: UIViewController {
                             if let ID:String = json["myID"] as? String {
                                 prejdi = 1;
                                 myID = ID;
+                                
+                                print(ID)
                             }
                         }
                     }
