@@ -20,14 +20,6 @@ class ViewController2: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
     var loadStatus: Bool = false
     var timer = Timer()
     
-    struct Contact:Codable {
-        var myID: String  = loginID
-        var newID: String = ""
-        var toSync: Int   = 1
-    }
-    
-    var contacts: [Contact] = []
-    
     
     @IBOutlet weak var cameraView: UIView!
     @IBOutlet weak var nameLabel: UILabel!
@@ -52,14 +44,6 @@ class ViewController2: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
     override func viewDidLoad() {
         print("startujem")
         super.viewDidLoad()
-        
-        self.timer = Timer.scheduledTimer(
-            timeInterval: 30.0, //in seconds
-            target: self, //where you'll find the selector (next argument)
-            selector: #selector(ViewController2.syncContacts), //MyClass is the current class
-            userInfo: nil, //no idea what this is, Apple, help?
-            repeats: true) //keep going!
-        
         
         if (loadStatus) {
             switchBtn.setImage(UIImage(named: "Switch1.png"), for: .normal)
@@ -111,12 +95,12 @@ class ViewController2: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
         
         
         
-//        self.timer = Timer.scheduledTimer(
-//            timeInterval: 30.0, //in seconds
-//            target: self, //where you'll find the selector (next argument)
-//            selector: #selector(ViewController2.syncContacts), //MyClass is the current class
-//            userInfo: nil, //no idea what this is, Apple, help?
-//            repeats: true) //keep going!
+        self.timer = Timer.scheduledTimer(
+            timeInterval: 5.0, //in seconds
+            target: self, //where you'll find the selector (next argument)
+            selector: #selector(ViewController2.syncContacts), //MyClass is the current class
+            userInfo: nil, //no idea what this is, Apple, help?
+            repeats: true) //keep going!
     }
 
     override func didReceiveMemoryWarning() {
@@ -171,19 +155,6 @@ class ViewController2: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
         let result:[String] = code.components(separatedBy: "|")
         
         if (result.count == 3) {
-            
-            if let temp = UserDefaults.standard.object(forKey: "myContacts") as? [String] {
-                contacts = temp
-                contacts.append(result[0])
-                print(contacts)
-                
-                UserDefaults.standard.set(contacts, forKey: "myContacts")
-            } else {
-                contacts.append(result[0])
-                print(contacts)
-                
-                UserDefaults.standard.set(contacts, forKey: "myContacts")
-            }
             
             
             nameLabel.text = result[1]
