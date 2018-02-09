@@ -70,10 +70,12 @@ class ViewController: UIViewController {
         let task = session.dataTask(with: request as URLRequest, completionHandler: { data, response, error in
             
             guard error == nil else {
+                self.showMSG(text: "Nepodařilo se přihlásit.")
                 return
             }
             
             guard let data = data else {
+                self.showMSG(text: "Nepodařilo se přihlásit.")
                 return
             }
             
@@ -89,10 +91,11 @@ class ViewController: UIViewController {
                     if let uspech = json["success"] as? String {
                         if (uspech == "1") {
                             if let ID:String = json["myID"] as? String {
-                                prejdi = 1;
-                                myID = ID;
                                 
-                                print(ID)
+                                if (Int(ID) != nil) {
+                                    myID = ID
+                                    prejdi = 1
+                                }
                             }
                         }
                     }
@@ -107,7 +110,7 @@ class ViewController: UIViewController {
                 UserDefaults.standard.set(myID, forKey: "myID")
                 
                 DispatchQueue.main.async {
-                    let vc = self.storyboard?.instantiateViewController(withIdentifier: "scanQR") as! ViewController2
+                    let vc = self.storyboard?.instantiateViewController(withIdentifier: "scanQR") as! ScanningQRControler
                     self.present(vc, animated: true, completion: nil)
                 }
                 

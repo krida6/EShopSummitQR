@@ -14,13 +14,21 @@ import RealmSwift
 let loginID = UserDefaults.standard.string(forKey: "myID")!
 let webUrl:String = "https://app.eshopsummit.cz";
 
+extension String {
+    var isInt: Bool {
+        return Int(self) != nil
+    }
+}
+
 class Contact: Object {
     @objc dynamic var myID = loginID
     @objc dynamic var pairID = "0"
     @objc dynamic var toSync = 1
 }
 
-class ViewController2: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
+
+
+class ScanningQRControler: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
     var captureSession: AVCaptureSession!
     var previewLayer: AVCaptureVideoPreviewLayer!
     
@@ -32,7 +40,7 @@ class ViewController2: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
     @IBOutlet weak var nameLabel: UILabel!
     @IBOutlet weak var companyLabel: UILabel!
     @IBOutlet weak var switchBtn: UIButton!
-    
+    @IBOutlet weak var nextBtn: UIButton!
     
     @IBAction func switchBtnClick(_ sender: Any) {
         loadStatus = !loadStatus
@@ -41,12 +49,24 @@ class ViewController2: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
         
         if (loadStatus) {
             switchBtn.setImage(UIImage(named: "Switch1.png"), for: .normal)
+            previewLayer.isHidden = false;
+            nextBtn.isHidden = true;
+            captureSession.startRunning()
         } else {
             switchBtn.setImage(UIImage(named: "Switch2.png"), for: .normal)
+            previewLayer.isHidden = true;
+            nextBtn.isHidden = false;
+            captureSession.stopRunning()
         }
         
     }
     
+    @IBAction func nextScan(_ sender: Any) {
+        previewLayer.isHidden = false;
+        nextBtn.isHidden = true;
+        
+        captureSession.startRunning()
+    }
     
     override func viewDidLoad() {
         print("startujem")
@@ -56,8 +76,10 @@ class ViewController2: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
         
         if (loadStatus) {
             switchBtn.setImage(UIImage(named: "Switch1.png"), for: .normal)
+            nextBtn.isHidden = false;
         } else {
             switchBtn.setImage(UIImage(named: "Switch2.png"), for: .normal)
+            nextBtn.isHidden = true;
         }
         
         // Do any additional setup after loading the view.
@@ -99,13 +121,18 @@ class ViewController2: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
         previewLayer.videoGravity = .resizeAspectFill
         view.layer.addSublayer(previewLayer)
         
-        captureSession.startRunning()
+        if (loadStatus) {
+            captureSession.startRunning()
+        } else {
+            previewLayer.isHidden = true;
+            nextBtn.isHidden = false;
+        }
         
         
         self.timer = Timer.scheduledTimer(
             timeInterval: 5.0, //in seconds
             target: self, //where you'll find the selector (next argument)
-            selector: #selector(ViewController2.syncContacts), //MyClass is the current class
+            selector: #selector(ScanningQRControler.syncContacts), //MyClass is the current class
             userInfo: nil, //no idea what this is, Apple, help?
             repeats: true) //keep going!
     }
@@ -236,7 +263,7 @@ class ViewController2: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
             guard let stringValue = readableObject.stringValue else { return }
             AudioServicesPlaySystemSound(SystemSoundID(kSystemSoundID_Vibrate))
             found(code: stringValue)
-        }        
+        }
     }
     
     func found(code: String) {
@@ -244,29 +271,37 @@ class ViewController2: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
         let result:[String] = code.components(separatedBy: "|")
         
         if (result.count == 3) {
-            
-            do {
-                let realm = try Realm()
-                let contact = Contact()
-                contact.pairID = result[0]
-                
-                try realm.write {
-                    realm.add(contact)
+            if (result[0].isInt) {
+                do {
+                    let realm = try Realm()
+                    let contact = Contact()
+                    contact.pairID = result[0]
+                    
+                    try realm.write {
+                        realm.add(contact)
+                    }
+                    
+                } catch let error as NSError {
+                    print(error)
+                    DispatchQueue.main.async {
+                        let alert = UIAlertController(title: "Message", message: "Komunikace s databázi se nezdařila. Odhlašte se a opakujte akci později.", preferredStyle: UIAlertControllerStyle.alert)
+                        alert.addAction(UIAlertAction(title: "Ok", style: UIAlertActionStyle.default, handler: nil))
+                        self.present(alert, animated: true, completion: nil)
+                    }
                 }
                 
-            } catch let error as NSError {
-                print(error)
-                DispatchQueue.main.async {
-                    let alert = UIAlertController(title: "Message", message: "Komunikace s databázi se nezdařila. Odhlašte se a opakujte akci později.", preferredStyle: UIAlertControllerStyle.alert)
-                    alert.addAction(UIAlertAction(title: "Ok", style: UIAlertActionStyle.default, handler: nil))
-                    self.present(alert, animated: true, completion: nil)
-                }
+                nameLabel.text = result[1]
+                companyLabel.text = result[2]
+                
+                print(result)
             }
-            
-            nameLabel.text = result[1]
-            companyLabel.text = result[2]
-            
-            print(result)
+        }
+        
+        if (loadStatus) {
+            captureSession.startRunning()
+        } else {
+            previewLayer.isHidden = true;
+            nextBtn.isHidden = false;
         }
     }
     
